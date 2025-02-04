@@ -5,7 +5,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data", "banvic_data")
 
 def share_datas():
-    """Retorna um dicionário com os caminhos dos arquivos CSV."""
+
     files = {
         "AGÊNCIAS": os.path.join(DATA_DIR, "agencias.csv"),
         "CLIENTES": os.path.join(DATA_DIR, "clientes.csv"),
