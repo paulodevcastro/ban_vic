@@ -111,8 +111,6 @@ def api_ipca():
 
 
 def integrate_transactions_ipca(df_transacoes, df_ipca):
-    """Realiza a integração entre as transações e os dados do IPCA."""
-
     # Garantindo que a coluna de data seja do tipo datetime
     df_transacoes["data_transacao"] = pd.to_datetime(df_transacoes["data_transacao"], errors="coerce")
 
