@@ -50,5 +50,55 @@ def analyze_and_plot():
     fig.tight_layout()
     plt.show()
 
+def plot_ipca_transacoes():
+    """
+        Função para carregar os dados, integrar as transações com o IPCA e gerar gráficos.
+        """
+    # Carregar os dados das planilhas CSV
+    planilhas = load_datas()
+
+    # Verificar se a planilha de transações está disponível
+    if "TRANSACOES" not in planilhas:
+        raise ValueError("Erro: A planilha de transações não foi encontrada!")
+
+    df_transacoes = planilhas["TRANSACOES"]
+
+    # Carregar os dados do IPCA
+    df_ipca = api_ipca()
+
+    # Integrar os dados das transações com o IPCA
+    df_final = integrate_transactions_ipca(df_transacoes, df_ipca)
+
+    # Verificar as colunas disponíveis no DataFrame integrado
+    print("Colunas disponíveis no DataFrame integrado:", df_final.columns)
+
+    # Garantir que a coluna 'data_transacao' está presente e converter para datetime
+    if "data_transacao" in df_final.columns:
+        df_final["data_transacao"] = pd.to_datetime(df_final["data_transacao"], errors="coerce")
+    else:
+        raise KeyError("Erro: A coluna 'data_transacao' não foi encontrada no DataFrame integrado!")
+
+    # Garantir que a coluna 'Valor do Índice' existe e converter para numérico
+    if "Valor do Índice" in df_final.columns:
+        df_final["Valor do Índice"] = pd.to_numeric(df_final["Valor do Índice"], errors="coerce")
+    else:
+        raise KeyError("Erro: A coluna 'Valor do Índice' não foi encontrada no DataFrame integrado!")
+
+    # Garantir que a coluna 'valor_transacao' existe e converter para numérico
+    if "valor_transacao" in df_final.columns:
+        df_final["valor_transacao"] = pd.to_numeric(df_final["valor_transacao"], errors="coerce")
+    else:
+        raise KeyError("Erro: A coluna 'valor_transacao' não foi encontrada no DataFrame integrado!")
+
+    # Criar gráfico de dispersão entre IPCA e valor das transações
+    plt.figure(figsize=(10, 6))
+    plt.scatter(df_final["Valor do Índice"], df_final["valor_transacao"], alpha=0.5, c="blue", label="Transações")
+    plt.xlabel("Índice IPCA")
+    plt.ylabel("Valor das Transações")
+    plt.title("Relação entre IPCA e Valor das Transações")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
 if __name__ == "__main__":
-    analyze_and_plot()
+    plot_ipca_transacoes()
