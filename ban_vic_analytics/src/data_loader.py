@@ -20,6 +20,11 @@ def load_datas():
             # Substituir valores NaN por "Sem dado"
             df = df.fillna("Sem dado")
 
+            # Configuração de exibição
+            pd.set_option("display.max_columns", None)
+            pd.set_option("display.max_rows", 100)
+            pd.set_option("display.expand_frame_repr", False)
+
             print(f"\n🔹 PLANILHA: {name}\n")
             print(df.head(10))
             print("-" * 100)
@@ -33,7 +38,7 @@ def load_datas():
             else:
                 print("Nenhum valor nulo encontrado.")
 
-            print("=" * 50)
+            print("=" * 100)
 
             # Armazenar DataFrame no dicionário
             dataframes[name] = df
@@ -131,30 +136,31 @@ def integrate_transactions_ipca(df_transacoes, df_ipca):
 
 if __name__ == "__main__":
     print("\nCarregando planilhas CSV")
-    planilhas = load_datas()  # Carregar todas as planilhas
-
-    # Carregar dados do IPCA
-    df_ipca = api_ipca()
-
-    if df_ipca is not None and "TRANSACOES" in planilhas:
-        df_transacoes = planilhas["TRANSACOES"]
-
-        print("\nDados das transações carregados com sucesso!")
-
-        # Integrar com IPCA
-        df_final = integrate_transactions_ipca(df_transacoes, df_ipca)
-
-        base_dir = os.path.dirname(os.path.abspath(__file__))  # Diretório atual do script
-        output_path = os.path.join(os.path.dirname(base_dir), "dados_integrados.csv")
-
-        # Se o arquivo já existir, removê-lo antes de criar um novo
-        if os.path.exists(output_path):
-            os.remove(output_path)
-            print(f"Arquivo anterior removido: {output_path}")
-
-        # Salvar o novo arquivo CSV
-        df_final.to_csv(output_path, index=False)
-
-        print(f"\nDados integrados salvos em: {output_path}")
-    else:
-        print("Erro: Não foi possível carregar os dados necessários para a integração!")
+    load_datas()
+    # planilhas = load_datas()  # Carregar todas as planilhas
+    #
+    # # Carregar dados do IPCA
+    # df_ipca = api_ipca()
+    #
+    # if df_ipca is not None and "TRANSACOES" in planilhas:
+    #     df_transacoes = planilhas["TRANSACOES"]
+    #
+    #     print("\nDados das transações carregados com sucesso!")
+    #
+    #     # Integrar com IPCA
+    #     df_final = integrate_transactions_ipca(df_transacoes, df_ipca)
+    #
+    #     base_dir = os.path.dirname(os.path.abspath(__file__))  # Diretório atual do script
+    #     output_path = os.path.join(os.path.dirname(base_dir), "dados_integrados.csv")
+    #
+    #     # Se o arquivo já existir, removê-lo antes de criar um novo
+    #     if os.path.exists(output_path):
+    #         os.remove(output_path)
+    #         print(f"Arquivo anterior removido: {output_path}")
+    #
+    #     # Salvar o novo arquivo CSV
+    #     df_final.to_csv(output_path, index=False)
+    #
+    #     print(f"\nDados integrados salvos em: {output_path}")
+    # else:
+    #     print("Erro: Não foi possível carregar os dados necessários para a integração!")

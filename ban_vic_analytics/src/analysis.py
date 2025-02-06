@@ -1,104 +1,97 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from src.data_loader import load_datas, api_ipca, integrate_transactions_ipca
+import requests
+import os
+from data_loader import load_datas  # Supondo que esta função esteja no seu módulo
 
-def analyze_and_plot():
-    datasets = load_datas()
-    df_transacoes = datasets["TRANSACOES"]
 
-    # Carregar IPCA
-    df_ipca = api_ipca()
+def api_ipca():
+    url = "https://apisidra.ibge.gov.br/values/t/1419/n1/all/v/all/p/all/c315/7169,7170,7445,7486,7558,7625,7660,7712,7766,7786/d/v63%202,v66%204,v69%202,v2265%202?formato=json"
+    response = requests.get(url)
 
-    # Integrar os dados de transações com IPCA
-    df = integrate_transactions_ipca(df_transacoes, df_ipca)
+    if response.status_code == 200:
+        dados_ipca = response.json()[1:]  # Remove cabeçalho
+        df_ipca = pd.DataFrame(dados_ipca)
 
-    # Converter a coluna de data para datetime
-    df["data_transacao"] = pd.to_datetime(df["data_transacao"], errors="coerce").dt.tz_localize(None)
+        # Renomeação de colunas
+        df_ipca = df_ipca.rename(columns={
+            "NC": "Niv. Terri. (Cod)",
+            "NN": "Niv. Terri.",
+            "MC": "Uni. Med (Cod)",
+            "MN": "Unid. Medida",
+            "V": "Valor do Índice",
+            "D1C": "Brasil (Cod)",
+            "D1N": "Brasil",
+            "D2C": "Cod Variável",
+            "D2N": "Nome Variável",
+            "D3C": "Mês (Cod)",
+            "D3N": "Nome Mês",
+            "D4C": "Cod. Agrupamento",
+            "D4N": "Agrupamento"
+        })
 
-    df["trimestre"] = df["data_transacao"].dt.to_period("Q").astype(str)
+        # Conversão da coluna "Valor do Índice" para numérico
+        df_ipca["Valor do Índice"] = pd.to_numeric(df_ipca["Valor do Índice"], errors="coerce")
 
-    # Agrupar por trimestre e calcular a média de transações e volume movimentado
-    df_resultado = df.groupby("trimestre").agg(
-        media_transacoes=("cod_transacao", "count"),
-        media_valor_movimentado=("valor_transacao", "mean")
-    ).reset_index()
+        # Ajustar o formato "Nome Mês" para "YYYY-MM"
+        meses = {
+            "janeiro": "01", "fevereiro": "02", "março": "03", "abril": "04",
+            "maio": "05", "junho": "06", "julho": "07", "agosto": "08",
+            "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
+        }
 
-    # Criar gráfico de barras
-    fig, ax1 = plt.subplots(figsize=(15, 6))
+        df_ipca[["Nome Mês", "Ano"]] = df_ipca["Nome Mês"].str.extract(r"(\w+) (\d{4})")
+        df_ipca["mes_ano"] = df_ipca.apply(lambda x: f"{x['Ano']}-{meses.get(x['Nome Mês'].lower(), '00')}", axis=1)
+        df_ipca = df_ipca.fillna("Sem dado")
 
-    ax1.bar(df_resultado["trimestre"], df_resultado["media_transacoes"],
-            color="blue", alpha=0.5, label="Média de Transações")
+        print("\nDados do IPCA carregados com sucesso!")
+        return df_ipca
 
-    ax1.set_xlabel("Trimestre")
-    ax1.set_ylabel("Média de Transações", color="blue")
-    ax1.tick_params(axis="y", labelcolor="blue")
-    ax1.set_xticklabels(df_resultado["trimestre"], rotation=45, ha="right")  # Rotação para legibilidade
+    print(f"Erro ao acessar a API: {response.status_code}")
+    return None
 
-    # Criar um segundo eixo para volume movimentado
-    ax2 = ax1.twinx()
-    ax2.plot(df_resultado["trimestre"], df_resultado["media_valor_movimentado"],
-             marker="o", color="red", linestyle="-", linewidth=2, label="Média do Valor Movimentado")
 
-    ax2.set_ylabel("Média do Valor Movimentado", color="red")
-    ax2.tick_params(axis="y", labelcolor="red")
+def get_documents_folder():
+    """ Retorna o caminho correto da pasta 'Documentos' no sistema operacional """
+    if os.name == "nt":  # Windows
+        return os.path.join(os.environ["USERPROFILE"], "Documents")
+    else:  # Linux/Mac
+        return os.path.expanduser("~/Documents")
 
-    # Adicionar grade para melhorar a leitura
-    ax1.grid(True, linestyle="--", alpha=0.6)
 
-    plt.title("Média de Transações e Valor Movimentado por Trimestre")
-    fig.tight_layout()
-    plt.show()
+def integrate_transactions_ipca(df_transacoes, df_ipca):
+    df_transacoes["data_transacao"] = pd.to_datetime(df_transacoes["data_transacao"], errors="coerce")
+    df_transacoes["mes_ano"] = df_transacoes["data_transacao"].dt.strftime("%Y-%m")
 
-def plot_ipca_transacoes():
-    """
-        Função para carregar os dados, integrar as transações com o IPCA e gerar gráficos.
-        """
-    # Carregar os dados das planilhas CSV
-    planilhas = load_datas()
+    df_final = df_transacoes.merge(df_ipca, on="mes_ano", how="left").fillna("Sem dado")
+    print("\nIntegração realizada com sucesso!")
 
-    # Verificar se a planilha de transações está disponível
-    if "TRANSACOES" not in planilhas:
-        raise ValueError("Erro: A planilha de transações não foi encontrada!")
+    # Definir o caminho na pasta Documentos
+    output_path = os.path.join(get_documents_folder(), "dados_integrados.csv")
 
-    df_transacoes = planilhas["TRANSACOES"]
+    # Remover arquivo antigo se existir
+    if os.path.exists(output_path):
+        os.remove(output_path)
+        print(f"Arquivo anterior removido: {output_path}")
 
-    # Carregar os dados do IPCA
-    df_ipca = api_ipca()
+    # Salvar novo CSV na pasta Documentos
+    df_final.to_csv(output_path, index=False)
+    print(f"\nDados integrados salvos em: {output_path}")
+    return df_final
 
-    # Integrar os dados das transações com o IPCA
-    df_final = integrate_transactions_ipca(df_transacoes, df_ipca)
-
-    # Verificar as colunas disponíveis no DataFrame integrado
-    print("Colunas disponíveis no DataFrame integrado:", df_final.columns)
-
-    # Garantir que a coluna 'data_transacao' está presente e converter para datetime
-    if "data_transacao" in df_final.columns:
-        df_final["data_transacao"] = pd.to_datetime(df_final["data_transacao"], errors="coerce")
-    else:
-        raise KeyError("Erro: A coluna 'data_transacao' não foi encontrada no DataFrame integrado!")
-
-    # Garantir que a coluna 'Valor do Índice' existe e converter para numérico
-    if "Valor do Índice" in df_final.columns:
-        df_final["Valor do Índice"] = pd.to_numeric(df_final["Valor do Índice"], errors="coerce")
-    else:
-        raise KeyError("Erro: A coluna 'Valor do Índice' não foi encontrada no DataFrame integrado!")
-
-    # Garantir que a coluna 'valor_transacao' existe e converter para numérico
-    if "valor_transacao" in df_final.columns:
-        df_final["valor_transacao"] = pd.to_numeric(df_final["valor_transacao"], errors="coerce")
-    else:
-        raise KeyError("Erro: A coluna 'valor_transacao' não foi encontrada no DataFrame integrado!")
-
-    # Criar gráfico de dispersão entre IPCA e valor das transações
-    plt.figure(figsize=(10, 6))
-    plt.scatter(df_final["Valor do Índice"], df_final["valor_transacao"], alpha=0.5, c="blue", label="Transações")
-    plt.xlabel("Índice IPCA")
-    plt.ylabel("Valor das Transações")
-    plt.title("Relação entre IPCA e Valor das Transações")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
 
 if __name__ == "__main__":
-    plot_ipca_transacoes()
+    print("\nCarregando planilhas CSV")
+    planilhas = load_datas()  # Carregar todas as planilhas
+
+    df_ipca = api_ipca()  # Carregar dados do IPCA
+
+    if df_ipca is not None and "TRANSACOES" in planilhas:
+        df_transacoes = planilhas["TRANSACOES"]
+
+        print("\nDados das transações carregados com sucesso!")
+
+        # Integrar com IPCA e salvar na pasta Documentos
+        integrate_transactions_ipca(df_transacoes, df_ipca)
+
+    else:
+        print("Erro: Não foi possível carregar os dados necessários para a integração!")
