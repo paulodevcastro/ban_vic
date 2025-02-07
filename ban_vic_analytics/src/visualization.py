@@ -1,13 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from src.data_loader import load_datas, api_ipca, integrate_transactions_ipca
+from src.data_loader import load_datas
+from src.analysis import api_ipca, integrate_transactions_ipca
 
 def analyze_and_plot():
     datasets = load_datas()
     df_transacoes = datasets["TRANSACOES"]
 
-    # Carregar IPCA
     df_ipca = api_ipca()
 
     # Integrar os dados de transações com IPCA
@@ -51,9 +51,6 @@ def analyze_and_plot():
     plt.show()
 
 def plot_ipca_transacoes():
-    """
-        Função para carregar os dados, integrar as transações com o IPCA e gerar gráficos.
-        """
     # Carregar os dados das planilhas CSV
     planilhas = load_datas()
 
@@ -84,7 +81,7 @@ def plot_ipca_transacoes():
     else:
         raise KeyError("Erro: A coluna 'Valor do Índice' não foi encontrada no DataFrame integrado!")
 
-    # Garantir que a coluna 'valor_transacao' existe e converter para numérico
+    # Garantir que a coluna 'valor_transacao' existe e converte valores numéricos
     if "valor_transacao" in df_final.columns:
         df_final["valor_transacao"] = pd.to_numeric(df_final["valor_transacao"], errors="coerce")
     else:

@@ -1,8 +1,7 @@
 import pandas as pd
 import requests
 import os
-from data_loader import load_datas  # Supondo que esta função esteja no seu módulo
-
+from data_loader import load_datas
 
 def api_ipca():
     url = "https://apisidra.ibge.gov.br/values/t/1419/n1/all/v/all/p/all/c315/7169,7170,7445,7486,7558,7625,7660,7712,7766,7786/d/v63%202,v66%204,v69%202,v2265%202?formato=json"
